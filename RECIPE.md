@@ -56,6 +56,7 @@ Layout `layouts/Glass-Edge.json`: root row → `islands` row of `sidebar` (colum
 - `render`'s context can't `notify`; size changes come from `on_size_change`.
 - herdr-core ends every process tagged with its `HC_SCOPE` when a command returns: the Vitals sampler's systemd unit must not inherit `HC_*` variables.
 - `setcap` grants live on the file: a new reader build drops them.
+- On Windows, Files' own-computer actions use PowerShell (`New-Item`, `Copy-Item`, ripgrep or `Get-ChildItem` | `Select-String`) and Explorer; other machines are reached as Unix over `scp` and `exec` with `on`. Usage never runs `python3` on Windows (it can be the Store's installer stub) and hides without Omarchy's cache.
 - Shipped mods and layouts are replaced on every Herdr start: edit the `glass-*` copies, never the originals.
 - Tested on Herdr 0.1.14.
 

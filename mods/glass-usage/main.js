@@ -3,13 +3,13 @@
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { edgeFrame } from "./frame.js";
-import { agents, exec, home, layout, run, theme, props } from "herdr";
+import { agents, exec, appHome, layout, run, theme, props, window } from "herdr";
 
 // ── Constants ─────────────────────────────────────────────────
 const SANS = "Geist";
 const MONO = "Liberation Mono";
 const WEEK = 7 * 24 * 3600;
-const HELPER = () => `${home()}/.config/herdr-app/mods/glass-usage/usage.py`;
+const HELPER = () => `${appHome()}/mods/glass-usage/usage.py`;
 
 const PROVIDERS = [
   { id: "claude", name: "claude code", app: "claude-code", icon: "icons/claude.svg" },
@@ -63,6 +63,8 @@ export default class Usage extends View {
   }
 
   refresh(cx) {
+    // No Omarchy cache on Windows.
+    if (window()?.platform === "windows") { this.fit(); return; }
     cx.spawn(async (cx) => {
       try {
         const r = await exec("python3", ["-I", HELPER()]);
@@ -77,7 +79,7 @@ export default class Usage extends View {
     const live = new Set(agents().map((a) => a.app));
     return PROVIDERS
       .map((p) => ({ ...p, data: this.raw[p.id], live: live.has(p.app) }))
-      .filter((p) => p.live || (p.data && now - (p.data.at ?? 0) < WEEK));
+      .filter((p) => p.data && (p.live || now - (p.data.at ?? 0) < WEEK));
   }
 
   fit() {

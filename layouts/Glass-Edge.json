@@ -127,7 +127,7 @@
             },
             {
               "id": "work-body",
-              "type": "row",
+              "type": "column",
               "children": [
                 {
                   "id": "main-col",
@@ -161,78 +161,78 @@
                           "lone": true
                         }
                       }
-                    },
-                    {
-                      "id": "status",
-                      "type": "block",
-                      "content": {
-                        "mod": "glass-status",
-                        "props": {
-                          "frame": "all small v6"
-                        }
-                      },
-                      "size": {
-                        "px": 38
-                      }
                     }
                   ],
                   "gap": 5,
                   "resizable": false
+                },
+                {
+                  "id": "panel",
+                  "type": "column",
+                  "children": [
+                    {
+                      "id": "panel-body",
+                      "type": "stack",
+                      "children": [
+                        {
+                          "id": "files",
+                          "type": "block",
+                          "content": {
+                            "mod": "glass-files",
+                            "props": {
+                              "frame": "all v5"
+                            }
+                          }
+                        },
+                        {
+                          "id": "changes",
+                          "type": "block",
+                          "content": {
+                            "mod": "glass-changes",
+                            "props": {
+                              "frame": "all v5"
+                            }
+                          }
+                        },
+                        {
+                          "id": "vitals",
+                          "type": "block",
+                          "content": {
+                            "mod": "vitals",
+                            "props": {
+                              "frame": "all v5"
+                            }
+                          }
+                        }
+                      ],
+                      "active": "vitals"
+                    }
+                  ],
+                  "size": {
+                    "px": 280
+                  },
+                  "min": 140,
+                  "max": 900
                 }
               ],
               "gap": 5
+            },
+            {
+              "id": "status",
+              "type": "block",
+              "content": {
+                "mod": "glass-status",
+                "props": {
+                  "frame": "all small v6"
+                }
+              },
+              "size": {
+                "px": 38
+              }
             }
           ],
           "gap": 5,
           "resizable": false
-        },
-        {
-          "id": "panel",
-          "type": "column",
-          "children": [
-            {
-              "id": "panel-body",
-              "type": "stack",
-              "children": [
-                {
-                  "id": "files",
-                  "type": "block",
-                  "content": {
-                    "mod": "glass-files",
-                    "props": {
-                      "frame": "all v5"
-                    }
-                  }
-                },
-                {
-                  "id": "changes",
-                  "type": "block",
-                  "content": {
-                    "mod": "glass-changes",
-                    "props": {
-                      "frame": "all v5"
-                    }
-                  }
-                },
-                {
-                  "id": "vitals",
-                  "type": "block",
-                  "content": {
-                    "mod": "vitals",
-                    "props": {
-                      "frame": "all v5"
-                    }
-                  }
-                }
-              ],
-              "active": "vitals"
-            }
-          ],
-          "size": {
-            "px": 434
-          },
-          "min": 280,
-          "max": 900
         }
       ],
       "padding": 5,

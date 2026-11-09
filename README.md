@@ -62,8 +62,13 @@ To build the reader yourself, run `vitals-src/build.sh` (Go 1.26). While a local
 
 - **Linux:** what this is built and tested on (Omarchy, Fedora, Raspberry Pi OS).
 - **macOS:** the reader builds for macOS, but this setup hasn't been tried there.
-- **Windows:** the layout and most panels work. Vitals can watch your Linux machines from a Windows Herdr, but it can't read the Windows computer itself yet. In Files, search, editing and transfers run Unix commands on the local computer, so on Windows they only work for spaces on Linux machines.
-- **Usage** reads Omarchy's usage cache (`~/.cache/omarchy/agent-usage`), so it stays empty without Omarchy.
+- **Windows:**
+  - The layout and every panel work.
+  - Files uses PowerShell on the Windows computer itself (search uses ripgrep when it's installed) and `scp` (Windows' built-in OpenSSH) to reach other machines.
+  - Vitals watches your Linux and macOS machines, but it can't read the Windows computer itself yet.
+  - `ctrl+alt` is AltGr on Windows, so `ctrl+alt+v` and `ctrl+alt+p` may type characters on some keyboard layouts; rebind them in `keys.json` if so.
+  - Transparency depends on your compositor, so there's none on Windows.
+- **Usage** reads Omarchy's usage cache (`~/.cache/omarchy/agent-usage`) and hides itself where there is none.
 
 ## Releasing
 

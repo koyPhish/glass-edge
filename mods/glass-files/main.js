@@ -1,7 +1,8 @@
 // Files for the focused pane's folder: lazy tree, previews, search, editing and transfers between machines.
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, InputState, Input } from "gpui-base";
-import { spaces, panes, focused, exec, readTextFile, writeTextFile, watchFolder, theme, settings, window, layout, machines, home, props, run } from "herdr";
+import { spaces, panes, focused, exec, readTextFile, writeTextFile, watchFolder, theme, settings, window, layout, machines, home, appHome, props, run } from "herdr";
+import * as fs from "fs/promises";
 import { edgeFrame } from "./frame.js";
 
 function location() {
@@ -20,7 +21,7 @@ const findNode = (node, id) => node?.id === id ? node : (node?.children ?? []).r
 // Whether the panel shows this tab.
 const shown = () => { const root = layout(), panel = findNode(root, "panel"), body = findNode(root, "panel-body"); return !panel || (!panel.hidden && body?.active === "files"); };
 const machineName = (m) => m ?? "this computer";
-const baseName = (p) => String(p).replace(/\/+$/, "").split("/").pop() || String(p);
+const baseName = (p) => String(p).replace(/[\\/]+$/, "").split(/[\\/]/).pop() || String(p);
 const errText = (r, what) => String(r.stderr || r.stdout).trim().split("\n").pop() || `${what} failed`;
 
 async function directory(path, on) {
@@ -57,6 +58,21 @@ function panelButtons(t) {
   ];
 }
 
+// ── This computer ─────────────────────────────────────────────
+
+// Whether `machine` is this computer and it runs Windows; other machines are reached as Unix.
+const winLocal = (machine) => !machine && window()?.platform === "windows";
+const psQuote = (s) => "'" + String(s).replace(/['‘’‚‛]/g, "$&$&") + "'";
+// A PowerShell script on this computer, with UTF-8 output.
+const ps = (script, opts) => exec("powershell", ["-NoProfile", "-NonInteractive", "-Command", "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); " + script], opts);
+
+// Opens a folder on this computer in the file manager.
+function openFolder(path) {
+  const p = window()?.platform;
+  const [cmd, args] = p === "windows" ? ["explorer.exe", [String(path).replace(/\//g, "\\")]] : p === "macos" ? ["open", [path]] : ["xdg-open", [path]];
+  exec(cmd, args).catch(() => {});
+}
+
 // ── Transfers ─────────────────────────────────────────────────
 
 // A place is { machine, path }: machine null is this computer.
@@ -68,7 +84,9 @@ async function sshTarget(machine) {
 }
 
 async function makeDir(place) {
-  const r = await exec("sh", ["-c", 'mkdir -p "$1"', "mkdir", place.path], { on: place.machine });
+  const r = winLocal(place.machine)
+    ? await ps(`New-Item -ItemType Directory -Force -Path ${psQuote(place.path)} | Out-Null`)
+    : await exec("sh", ["-c", 'mkdir -p "$1"', "mkdir", place.path], { on: place.machine });
   if (r.code !== 0) throw new Error(errText(r, `mkdir on ${machineName(place.machine)}`));
 }
 
@@ -76,7 +94,9 @@ async function makeDir(place) {
 async function copy(from, into) {
   await makeDir(into);
   if (from.machine === into.machine) {
-    const r = await exec("cp", ["-R", "-p", from.path, into.path], { on: from.machine });
+    const r = winLocal(from.machine)
+      ? await ps(`Copy-Item -LiteralPath ${psQuote(from.path)} -Destination ${psQuote(into.path)} -Recurse -Force -ErrorAction Stop`)
+      : await exec("cp", ["-R", "-p", from.path, into.path], { on: from.machine });
     if (r.code !== 0) throw new Error(errText(r, "copy"));
     return;
   }
@@ -87,7 +107,7 @@ async function copy(from, into) {
 
 // Where a machine keeps what's sent to it: Downloads here, ~/inbox elsewhere.
 async function inboxOf(machine) {
-  if (!machine) return `${home()}/Downloads`;
+  if (!machine) return `${home()}${winLocal(null) ? "\\" : "/"}Downloads`;
   const r = await exec("sh", ["-c", 'printf %s "$HOME/inbox"'], { on: machine });
   if (r.code !== 0 || !r.stdout) throw new Error(`can't reach ${machine}`);
   return r.stdout;
@@ -95,16 +115,39 @@ async function inboxOf(machine) {
 
 // ── Search and saving ─────────────────────────────────────────
 
+// Paths under root, relative to it with "/", from lines of full paths.
+function relative(root, out) {
+  const norm = (p) => String(p).replace(/\\/g, "/");
+  const prefix = norm(root).replace(/\/$/, "") + "/";
+  return out.split(/\r?\n/).map((l) => norm(l.trim())).filter(Boolean).slice(0, FOUND_LIMIT)
+    .map((p) => (p.startsWith(prefix) ? p.slice(prefix.length) : p)).filter((p) => p && p !== norm(root));
+}
+
+// Search on a Windows computer: ripgrep when it's installed, else PowerShell.
+async function searchWindows(root, query, mode) {
+  const rgArgs = mode === "text"
+    ? ["-l", "-i", "-F", "--max-filesize", "2M", ...SKIP.flatMap((d) => ["-g", `!${d}`]), "--", query, root]
+    : ["--files", "--hidden", ...SKIP.flatMap((d) => ["-g", `!${d}`]), "--iglob", `*${query}*`, root];
+  const rg = await exec("rg", rgArgs, { timeout: 60000 }).catch(() => null);
+  if (rg && (rg.code === 0 || rg.code === 1)) return relative(root, rg.stdout);
+  const skip = SKIP.map(psQuote).join(",");
+  const files = `Get-ChildItem -LiteralPath ${psQuote(root)} -Recurse -Force -Depth 8 -ErrorAction SilentlyContinue | Where-Object { $parts = $_.FullName -split '[\\\\/]'; -not ($parts | Where-Object { @(${skip}) -contains $_ }) }`;
+  const script = mode === "text"
+    ? `${files} | Where-Object { -not $_.PSIsContainer -and $_.Length -lt 2MB } | Select-String -Pattern ${psQuote(query)} -SimpleMatch -List -ErrorAction SilentlyContinue | Select-Object -First ${FOUND_LIMIT} | ForEach-Object { $_.Path }`
+    : `$pattern = '*' + [WildcardPattern]::Escape(${psQuote(query)}) + '*'; ${files} | Where-Object { $_.Name -like $pattern } | Select-Object -First ${FOUND_LIMIT} | ForEach-Object { $_.FullName }`;
+  return relative(root, (await ps(script, { timeout: 60000 })).stdout);
+}
+
 // Paths under root whose name ("name") or text ("text") holds the query.
 async function search(root, machine, query, mode) {
+  if (winLocal(machine)) return searchWindows(root, query, mode);
   const skipGrep = SKIP.map(d => `--exclude-dir='${d}'`).join(" "), skipRg = SKIP.map(d => `-g '!${d}'`).join(" ");
   const prune = SKIP.map(d => `-name '${d}'`).join(" -o ");
   const cmd = mode === "text"
     ? `if command -v rg >/dev/null 2>&1; then rg -l -i -F --max-filesize 2M ${skipRg} -- "$2" "$1"; else grep -rIl -i -F ${skipGrep} -- "$2" "$1"; fi 2>/dev/null | head -${FOUND_LIMIT}`
     : `find "$1" -maxdepth 8 \\( ${prune} \\) -prune -o -iname "*$2*" -print 2>/dev/null | head -${FOUND_LIMIT}`;
   const r = await exec("sh", ["-c", cmd, "search", root, query], { on: machine, timeout: 60000 });
-  const prefix = root.replace(/\/$/, "") + "/";
-  return r.stdout.split("\n").filter(Boolean).map(p => p.startsWith(prefix) ? p.slice(prefix.length) : p).filter(p => p && p !== root);
+  return relative(root, r.stdout);
 }
 
 // Writes text only if the file still holds `original`; remote files keep their owner and mode.
@@ -115,15 +158,14 @@ async function saveText(path, machine, text, original) {
     return;
   }
   if (await readTextFile(path, { on: machine }) !== original) throw new Error("the file changed on disk since you opened it");
-  const tmp = `${home()}/.cache/glass-files/save-${Date.now().toString(36)}`;
-  await exec("mkdir", ["-p", `${home()}/.cache/glass-files`]);
+  const tmp = `${appHome()}/.glass-save-${Date.now().toString(36)}`;
   await writeTextFile(tmp, text, null);
   try {
     const up = await exec("scp", ["-q", "-o", "BatchMode=yes", tmp, `${await sshTarget(machine)}:${path}.glass-save`]);
     if (up.code !== 0) throw new Error(errText(up, "upload"));
     const r = await exec("sh", ["-c", 'cat "$1.glass-save" > "$1" && rm -f "$1.glass-save"', "save", path], { on: machine });
     if (r.code !== 0) throw new Error(errText(r, "save"));
-  } finally { await exec("rm", ["-f", tmp]).catch(() => {}); }
+  } finally { await fs.unlink(tmp).catch(() => {}); }
 }
 
 // ── Files panel ───────────────────────────────────────────────
@@ -359,7 +401,7 @@ export default class Files extends View {
       .when(Boolean(this.on), el => el.child(this.pill(`m-dl-${path}`, "Download", cx => { close(cx); this.transfer(full, { machine: null }, cx); }, t)))
       .child(this.pill(`m-send-${path}`, "Send to…", cx => { this.sendFor = path; cx.notify(); }, t))
       .child(this.pill(`m-copy-${path}`, "Copy path", cx => { cx.write_to_clipboard(full.path); close(cx); }, t))
-      .when(!this.on, el => el.child(this.pill(`m-reveal-${path}`, "Show in folder", cx => { close(cx); exec("xdg-open", [entry.dir ? full.path : full.path.replace(/\/[^/]*$/, "")]).catch(() => {}); }, t)));
+      .when(!this.on, el => el.child(this.pill(`m-reveal-${path}`, "Show in folder", cx => { close(cx); openFolder(entry.dir ? full.path : full.path.replace(/[\\/][^\\/]*$/, "")); }, t)));
   }
 
   rows(prefix, depth, out, t) {
@@ -432,7 +474,7 @@ export default class Files extends View {
           .child(h_flex().gap(6).items_center()
             .child(j.state === "running" ? div().text_size(11).text_color(color).frames(["◐", "◓", "◑", "◒"], 160) : div().text_size(11).text_color(color).child(j.state === "done" ? "✓" : "✕"))
             .child(div().flex_1().min_w(0).truncate().text_size(12).child(j.name))
-            .when(j.state === "done" && !j.into.machine, el => el.child(this.pill(`job-open-${j.id}`, "Open", () => exec("xdg-open", [j.into.path]).catch(() => {}), t))))
+            .when(j.state === "done" && !j.into.machine, el => el.child(this.pill(`job-open-${j.id}`, "Open", () => openFolder(j.into.path), t))))
           .child(div().w_full().truncate().text_size(11).text_color(t.dim).child(`${machineName(j.from)} → ${machineName(j.into.machine)}${j.into.path ? ` · ${j.into.path}` : ""}`))
           .when(Boolean(j.error), el => el.child(div().w_full().text_size(11).text_color(t.ansi1).child(j.error)));
       })));
