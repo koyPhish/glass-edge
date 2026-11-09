@@ -4,24 +4,27 @@ name: release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: vitals-src/go.mod
+          cache-dependency-path: vitals-src/go.sum
       - name: Build
         working-directory: vitals-src
         env:
           CGO_ENABLED: "0"
         run: |
           version="${GITHUB_REF_NAME#v}"
+          [ "$GITHUB_REF_TYPE" = tag ] || version=dev
           mkdir -p ../dist
           for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
             GOOS="${target%/*}" GOARCH="${target#*/}" go build -trimpath -ldflags "-s -w -X main.appVersion=$version" -o "../dist/vitals-${target%/*}-${target#*/}" .
@@ -31,6 +34,7 @@ jobs:
         working-directory: vitals-src
         run: go test ./...
       - name: Release
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
