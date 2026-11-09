@@ -40,8 +40,26 @@ export function tones(t) {
   };
 }
 
-// A load's colour: green, yellow, orange, red.
-export const loadColor = (o, pct) => (pct >= 80 ? o.fix : pct >= 60 ? o.orange : pct >= 40 ? o.yellow : o.review);
+// ── Load gradient ──
+const rgb = (c) => (/^#[0-9a-f]{6}/i.test(c ?? "") ? [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)) : null);
+const hex = (v) => "#" + v.map((x) => Math.round(x).toString(16).padStart(2, "0")).join("");
+
+// Two colours mixed at t (0–1), or null when either isn't hex.
+function mix(a, b, t) {
+  const [x, y] = [rgb(a), rgb(b)];
+  return x && y ? hex(x.map((v, i) => v + (y[i] - v) * t)) : null;
+}
+
+// Stepped load colour, for themes without hex colours.
+const steppedLoad = (o, pct) => (pct >= 90 ? o.fix : pct >= 60 ? o.orange : pct >= 40 ? o.yellow : o.review);
+
+// A load's colour: green to 40, then yellow, orange and red blended at 40, 60 and 90.
+export function loadColor(o, pct) {
+  if (!(pct >= 40)) return o.review;
+  if (pct >= 90) return o.fix;
+  const [a, b, t] = pct < 60 ? [o.yellow, o.orange, (pct - 40) / 20] : [o.orange, o.fix, (pct - 60) / 30];
+  return mix(a, b, t) ?? steppedLoad(o, pct);
+}
 
 // A level's colour: ok, warn, hot.
 export const levelColor = (o, l) => ({ hot: o.fix, warn: o.work })[l] ?? o.review;

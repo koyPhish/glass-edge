@@ -328,7 +328,7 @@ export default class Vitals extends View {
 
   meter(o, pct, { color = null } = {}) {
     const lit = Math.round((clamp(pct) / 100) * METER_SEGMENTS);
-    const at = (i) => color ?? (i >= METER_SEGMENTS * 0.9 ? o.fix : i >= METER_SEGMENTS * 0.8 ? o.work : o.review);
+    const at = (i) => color ?? loadColor(o, (100 * i) / METER_SEGMENTS);
     return h_flex().flex_1().min_w(0).max_w(196).gap(2).h(10).children(
       Array.from({ length: METER_SEGMENTS }, (_, i) => div().flex_1().h_full().rounded(1.5).bg(i < lit ? at(i) : tint(o.line, 0.45))),
     );
