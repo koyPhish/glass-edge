@@ -2,7 +2,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { spaces, exec, home, appHome, theme, props, layout, run, nextCommand, window as appWindow } from "herdr";
+import { spaces, exec, home, appHome, theme, props, layout, run, nextCommand, settings, window as appWindow } from "herdr";
 import { edgeFrame } from "./frame.js";
 import { tones, tint, levelColor, loadColor, bytes, bytesOf, icon, MONO } from "./look.js";
 // ── Reader binary ─────────────────────────────────────────────
@@ -142,6 +142,7 @@ export default class Vitals extends View {
     this.err = "";
     this.peaks = [];
     this.cpuHist = [];
+    this.cpuStrip = [];
     this.demoMachines = [];
     this.gpus = [];
     this.gpuPeaks = {};
@@ -185,6 +186,7 @@ export default class Vitals extends View {
     this.reading = null;
     this.peaks = [];
     this.cpuHist = [];
+    this.cpuStrip = [];
     this.err = "";
     this.gpus = [];
     this.gpuPeaks = {};
@@ -261,6 +263,10 @@ export default class Vitals extends View {
     if (!this.cpuHist.length && r.history?.length) this.cpuHist = r.history.map((p) => p.c).slice(-HISTORY_BANDS);
     if (!r.warming) this.cpuHist.push(r.cpu);
     if (this.cpuHist.length > HISTORY_BANDS) this.cpuHist = this.cpuHist.slice(-HISTORY_BANDS);
+    // The strip under the CPU equalizer: the reader's history when it keeps one, else our own readings.
+    if (!this.cpuStrip.length && r.history?.length) this.cpuStrip = r.history.map((p) => p.c).slice(-GPU_HISTORY);
+    if (!r.warming && r.cpu != null) this.cpuStrip.push(r.cpu);
+    if (this.cpuStrip.length > GPU_HISTORY) this.cpuStrip.splice(0, this.cpuStrip.length - GPU_HISTORY);
     this.reading = r;
     this.peaks = nextPeaks(this.bands().map(litOf), this.peaks);
     this.gpus = r.gpuView ?? [];
@@ -478,7 +484,7 @@ export default class Vitals extends View {
       .child(h_flex().flex_none().min_w(0).gap(14).items_start()
         .child(this.equalizer(o, w - READOUT_W - 14, this.bands(), this.peaks, null, segH))
         .child(this.readout(o, r && !r.warming ? r.cpu : null, "% busy", this.cpuLines(r))))
-      .when(Boolean(r?.history?.length), (el) => el.child(this.strip(o, w, r.history.map((p) => p.c))));
+      .when(this.cpuStrip.length > 1, (el) => el.child(this.strip(o, w, this.cpuStrip)));
   }
 
   memItems(o, r) {
@@ -513,9 +519,11 @@ export default class Vitals extends View {
     const t = theme();
     const o = tones(t);
     const r = this.reading;
-    const W = this.size?.width ?? 368;
+    // on_size_change reports window px, but .w()/.text_size() are scaled by zoom: lay out in zoomed px.
+    const zoom = Number(settings()?.zoom) || 1;
+    const W = (this.size?.width ?? 368 * zoom) / zoom;
     const hasGpu = this.gpus.length > 0;
-    const cols = Math.min(W >= 1040 && hasGpu ? 3 : W >= 680 ? 2 : 1, hasGpu ? 3 : 2);
+    const cols = W >= 680 ? 2 : 1;
     const gap = 20;
     const w = Math.floor((W - 32 - gap * (cols - 1)) / cols);
     const err = this.err ? [div().flex_none().text_size(12).text_color(o.fix).child(this.err)] : [];
@@ -524,12 +532,12 @@ export default class Vitals extends View {
     const mem = [...this.memItems(o, r), ...this.diskItems(o, r)], net = this.netItems(o, r);
     const hint = this.hintBox(o, r);
     const groups = cols === 1 ? [[...err, ...cpu, ...gpu, ...mem, ...net]]
-      : cols === 2 ? (hasGpu ? [[...err, ...cpu, ...mem], [...gpu, ...net]] : [[...err, ...cpu, ...mem], net])
-      : [[...err, ...cpu, ...mem], gpu, net];
+      : [[...err, ...cpu, ...mem], [...gpu, ...net]];
     const column = (items, i) => v_flex().id(`col-${i}`).flex_none().min_w(0).w(w).gap(8).children(items);
     return edgeFrame(v_flex()
       .id("vitals")
       .size_full()
+      .min_w(0)
       .border_1()
       .text_size(12.5)
       .on_size_change((size, cx) => {
