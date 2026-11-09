@@ -323,13 +323,13 @@ export default class Vitals extends View {
   meter(o, pct, { color = null } = {}) {
     const lit = Math.round((clamp(pct) / 100) * METER_SEGMENTS);
     const at = (i) => color ?? (i >= METER_SEGMENTS * 0.9 ? o.fix : i >= METER_SEGMENTS * 0.8 ? o.work : o.review);
-    return h_flex().flex_1().min_w(40).max_w(196).gap(2).h(10).children(
+    return h_flex().flex_1().min_w(0).max_w(196).gap(2).h(10).children(
       Array.from({ length: METER_SEGMENTS }, (_, i) => div().flex_1().h_full().rounded(1.5).bg(i < lit ? at(i) : tint(o.line, 0.45))),
     );
   }
 
   row(o, label, meter, value, sub) {
-    return h_flex().flex_none().gap(8).items_center().h(22)
+    return h_flex().flex_none().w_full().min_w(0).gap(8).items_center().h(22)
       .child(div().flex_none().w(58).truncate().text_size(11.5).text_color(o.dim).child(label))
       .child(meter)
       .child(div().flex_none().w(66).truncate().text_size(11.5).font_family(MONO).text_color(o.fg).child(value))
@@ -395,7 +395,7 @@ export default class Vitals extends View {
         .when(i === 0, (el) => el.on_size_change((size, cx) => { this.gpuH = size.height; this.fitCpu(cx); }))
         .children([
         this.section(o, title, "gpu"),
-        h_flex().flex_none().gap(14).items_start()
+        h_flex().flex_none().min_w(0).gap(14).items_start()
           .child(this.equalizer(o, w - READOUT_W - 14, values, this.gpuPeaks[g.id] ?? [], labels))
           .child(this.readout(o, g.util, g.clockOnly ? "% clock" : "% busy", this.gpuLines(g))),
         ...(hist.length > 1 ? [this.strip(o, w, hist)] : []),
@@ -475,7 +475,7 @@ export default class Vitals extends View {
     return v_flex().id("cpu-block").flex_none().gap(8)
       .when(matched, (el) => el.on_size_change((size, cx) => { this.cpuH = size.height; this.fitCpu(cx); }))
       .child(this.section(o, r?.perCore?.length ? `CPU · ${r.perCore.length} cores` : `CPU · the last ${(HISTORY_BANDS * EVERY_MS) / 1000} seconds`, "pulse"))
-      .child(h_flex().flex_none().gap(14).items_start()
+      .child(h_flex().flex_none().min_w(0).gap(14).items_start()
         .child(this.equalizer(o, w - READOUT_W - 14, this.bands(), this.peaks, null, segH))
         .child(this.readout(o, r && !r.warming ? r.cpu : null, "% busy", this.cpuLines(r))))
       .when(Boolean(r?.history?.length), (el) => el.child(this.strip(o, w, r.history.map((p) => p.c))));
@@ -526,7 +526,7 @@ export default class Vitals extends View {
     const groups = cols === 1 ? [[...err, ...cpu, ...gpu, ...mem, ...net]]
       : cols === 2 ? (hasGpu ? [[...err, ...cpu, ...mem], [...gpu, ...net]] : [[...err, ...cpu, ...mem], net])
       : [[...err, ...cpu, ...mem], gpu, net];
-    const column = (items, i) => v_flex().id(`col-${i}`).flex_none().w(w).gap(8).children(items);
+    const column = (items, i) => v_flex().id(`col-${i}`).flex_none().min_w(0).w(w).gap(8).children(items);
     return edgeFrame(v_flex()
       .id("vitals")
       .size_full()
@@ -539,9 +539,9 @@ export default class Vitals extends View {
         }
       })
       .child(this.topBar(t, o, cols > 1 ? this.hostLine(o, r, true) : null))
-      .child(v_flex().id("vitals-body").flex_1().min_h(0).overflow_y_scrollbar().px(16).pt(10).pb(10)
+      .child(v_flex().id("vitals-body").flex_1().min_h(0).min_w(0).overflow_y_scrollbar().px(16).pt(10).pb(10)
         .when(cols === 1, (el) => el.child(div().flex_none().mb(8).child(this.hostLine(o, r, false))))
         .when(Boolean(hint), (el) => el.child(hint))
-        .child(h_flex().flex_none().gap(gap).items_start().children(groups.map(column)))), props()?.frame);
+        .child(h_flex().flex_none().min_w(0).w_full().gap(gap).items_start().children(groups.map(column)))), props()?.frame);
   }
 }

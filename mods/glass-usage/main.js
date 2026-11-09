@@ -60,6 +60,22 @@ export default class Usage extends View {
     this.folded = localStorage.getItem("folded") === "1";
     this.refresh(cx);
     cx.timer.every(30000, (cx) => this.refresh(cx));
+    // Windows: keep the usage cache fresh from the live API while Herdr is open.
+    this.populate(cx);
+    cx.timer.every(600000, (cx) => this.populate(cx));
+  }
+
+  // Windows only: run the populator, which reads the local Claude token and
+  // writes the Omarchy-format cache that refresh() reads. No-op elsewhere;
+  // Linux/macOS get their cache from Omarchy.
+  populate(cx) {
+    if (window()?.platform !== "windows") return;
+    cx.spawn(async (cx) => {
+      try {
+        await exec("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", `${appHome()}/mods/glass-usage/populate.ps1`]);
+      } catch {}
+      this.refresh(cx);
+    });
   }
 
   refresh(cx) {
