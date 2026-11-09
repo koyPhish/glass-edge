@@ -1,0 +1,9 @@
+{
+  "global": {
+    "ctrl-alt-v": "glass-tabs.vitals",
+    "ctrl-alt-p": "glass-tabs.dock"
+  },
+  "mod:vitals": {
+    "escape": "vitals.close"
+  }
+}

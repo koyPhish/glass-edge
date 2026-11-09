@@ -1,0 +1,26 @@
+# ── Published files ───────────────────────────────────────────
+/*
+!/.gitignore
+!/.github/
+!/README.md
+!/RECIPE.md
+!/LICENSE
+!/preview.png
+!/keys.glass-edge.json
+!/vitals-src/
+!/layouts/
+/layouts/*
+!/layouts/Glass-Edge.json
+!/layouts/Glass-Edge.png
+!/themes/
+/themes/*
+!/themes/Vibrant-Night.json
+!/mods/
+/mods/*
+!/mods/glass-*/
+!/mods/vitals/
+
+# ── Written by Herdr ──────────────────────────────────────────
+gpui-kit.d.ts
+jsconfig.json
+*.error
