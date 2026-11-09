@@ -1,0 +1,8 @@
+{
+  "fetchedAtMs": 1731100000000,
+  "tierLabel": "Max 20x",
+  "limits": [
+    { "label": "5h session", "percent": 0.42, "resetsAt": "2026-11-08T18:00:00Z" },
+    { "label": "7 day", "percent": 0.13, "resetsAt": "2026-11-14T00:00:00Z" }
+  ]
+}

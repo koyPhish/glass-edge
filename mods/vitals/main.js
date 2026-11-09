@@ -2,7 +2,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { spaces, exec, home, theme, props, layout, run, nextCommand, window as appWindow } from "herdr";
+import { spaces, exec, home, appHome, theme, props, layout, run, nextCommand, window as appWindow } from "herdr";
 import { edgeFrame } from "./frame.js";
 import { tones, tint, levelColor, loadColor, bytes, bytesOf, icon, MONO } from "./look.js";
 // ── Reader binary ─────────────────────────────────────────────
@@ -49,7 +49,8 @@ async function localBuild(name) {
 
 // Puts the matching reader on a machine when it's missing or out of date; returns its path.
 async function install(machine) {
-  if (!machine && appWindow()?.platform === "windows") throw new Error("Vitals can't read Windows machines yet");
+  // Local Windows: no Unix reader binary; use the bundled PowerShell reader (see reader.ps1).
+  if (!machine && appWindow()?.platform === "windows") return `win:${appHome()}/mods/vitals/reader.ps1`;
   const probe = `uname -sm; printf '%s\\n' "$HOME"; v=$("$HOME/${BIN}" version 2>/dev/null) || v=none; printf '%s\\n' "$v" | head -n 1; (sha256sum "$HOME/${BIN}" 2>/dev/null || shasum -a 256 "$HOME/${BIN}" 2>/dev/null) | cut -d' ' -f1`;
   const [sm = "", remoteHome = "", have = "", haveSum = ""] = (await must("sh", ["-c", probe], { on: machine })).split("\n").map((l) => l.trim());
   const [os, cpu] = sm.split(" ");
@@ -74,7 +75,11 @@ async function install(machine) {
 
 // One request to the reader at `bin` on a machine (null is this one).
 async function ask(req, machine, bin) {
-  const r = await exec("sh", ["-c", 'exec "$0" app "$1"', await bin, JSON.stringify(req)], { on: machine });
+  const path = await bin;
+  // The local Windows reader is a PowerShell script, not a Unix `sh` binary.
+  const r = path.startsWith("win:")
+    ? await exec("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path.slice(4), req.op ?? "now"])
+    : await exec("sh", ["-c", 'exec "$0" app "$1"', path, JSON.stringify(req)], { on: machine });
   let res;
   try {
     res = JSON.parse(r.stdout);

@@ -44,7 +44,7 @@ o.transparent_window("^(herdr-app)$", "0.8 0.8")
 
 ## Vitals
 
-Vitals runs a small reader program on each machine. The panel installs it at `~/.local/share/vitals/vitals` the first time you look at a machine: the machine downloads the build for its OS and CPU from this repo's [releases](../../releases) and checks it against `SHA256SUMS`. It needs `curl` or `wget` there.
+Vitals runs a small reader program on each machine. On Linux and macOS the panel installs it at `~/.local/share/vitals/vitals` the first time you look at a machine: the machine downloads the build for its OS and CPU from this repo's [releases](../../releases) and checks it against `SHA256SUMS`. It needs `curl` or `wget` there. On the local Windows computer there's no downloaded binary — a bundled PowerShell reader (`mods/vitals/reader.ps1`) is used instead, so no `curl`/`wget`, Go or release build is needed.
 
 - **GPUs:** NVIDIA (`nvidia-smi`), AMD, Intel and Raspberry Pi. A computer's integrated GPU is hidden when it has a discrete one and the integrated one drives no display.
 - **CPU power and Intel GPU engine load** read kernel performance counters, which need a one-time grant on each machine. The panel shows the command with a Copy button:
@@ -65,10 +65,10 @@ To build the reader yourself, run `vitals-src/build.sh` (Go 1.26). While a local
 - **Windows:**
   - The layout and every panel work.
   - Files uses PowerShell on the Windows computer itself (search uses ripgrep when it's installed) and `scp` (Windows' built-in OpenSSH) to reach other machines.
-  - Vitals watches your Linux and macOS machines, but it can't read the Windows computer itself yet.
+  - Vitals reads this Windows computer through a bundled PowerShell reader (`mods/vitals/reader.ps1`): CPU and per-core load, memory, swap, disks, network and NVIDIA GPUs (`nvidia-smi`). CPU temperature/package power and a real load average aren't available on Windows, so those lines are left out (Load is derived from CPU busy). It still reaches your Linux and macOS machines over SSH as before.
   - `ctrl+alt` is AltGr on Windows, so `ctrl+alt+v` and `ctrl+alt+p` may type characters on some keyboard layouts; rebind them in `keys.json` if so.
   - Transparency depends on your compositor, so there's none on Windows.
-- **Usage** reads Omarchy's usage cache (`~/.cache/omarchy/agent-usage`) and hides itself where there is none.
+- **Usage** reads Omarchy's usage cache (`~/.cache/omarchy/agent-usage`) on Linux. On Windows it reads the same Omarchy-format JSON (via `mods/glass-usage/usage.ps1`) from `%LOCALAPPDATA%\herdr\agent-usage`, then `~/.herdr/agent-usage`, then `~/.cache/omarchy/agent-usage` — drop `claude-limits-*.json` / `codex-limits-*.json` there (see `mods/glass-usage/usage-cache.example.json`). It hides itself where there is none.
 
 ## Releasing
 

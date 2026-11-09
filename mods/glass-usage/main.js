@@ -63,11 +63,13 @@ export default class Usage extends View {
   }
 
   refresh(cx) {
-    // No Omarchy cache on Windows.
-    if (window()?.platform === "windows") { this.fit(); return; }
+    const win = window()?.platform === "windows";
     cx.spawn(async (cx) => {
       try {
-        const r = await exec("python3", ["-I", HELPER()]);
+        // Windows reads an Omarchy-format cache via PowerShell; Linux/macOS use the python3 helper.
+        const r = win
+          ? await exec("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", `${appHome()}/mods/glass-usage/usage.ps1`])
+          : await exec("python3", ["-I", HELPER()]);
         if (r.code === 0 && r.stdout.trim()) this.raw = JSON.parse(r.stdout);
       } catch {}
       this.fit();
