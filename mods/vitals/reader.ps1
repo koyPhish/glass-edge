@@ -70,17 +70,17 @@ try {
   # ── GPUs via nvidia-smi ─────────────────────────────────────
   $gpuView = @()
   try {
-    $q = "index,name,utilization.gpu,utilization.memory,memory.used,memory.total,power.draw,power.limit,temperature.gpu,fan.speed,clocks.sm,clocks.max.sm"
+    $q = "index,name,utilization.gpu,memory.used,memory.total,power.draw,power.limit,temperature.gpu,fan.speed,clocks.sm,clocks.max.sm"
     $lines = & nvidia-smi "--query-gpu=$q" "--format=csv,noheader,nounits" 2>$null
     foreach ($line in $lines) {
       if (-not ("$line").Trim()) { continue }
       $f = "$line" -split '\s*,\s*'
-      if ($f.Count -lt 12) { continue }
-      $util = Num $f[2]; $memUtil = Num $f[3]
-      $vu = Num $f[4]; $vt = Num $f[5]
-      $pw = Num $f[6]; $pl = Num $f[7]
-      $tp = Num $f[8]; $fan = Num $f[9]
-      $clk = Num $f[10]; $clkMax = Num $f[11]
+      if ($f.Count -lt 11) { continue }
+      $util = Num $f[2]
+      $vu = Num $f[3]; $vt = Num $f[4]
+      $pw = Num $f[5]; $pl = Num $f[6]
+      $tp = Num $f[7]; $fan = Num $f[8]
+      $clk = Num $f[9]; $clkMax = Num $f[10]
 
       $vramPct = 0.0; if ($vt) { $vramPct = $vu / $vt * 100 }
       $pwrPct = 0.0; if ($pl) { $pwrPct = $pw / $pl * 100 }
@@ -89,7 +89,6 @@ try {
 
       $bands = @()
       $bands += @{ label = "GPU"; pct = $util }
-      $bands += @{ label = "MEM"; pct = $memUtil }
       $bands += @{ label = "VRAM"; pct = $vramPct }
       $bands += @{ label = "PWR"; pct = $pwrPct }
       $bands += @{ label = "TEMP"; pct = $tempPct }

@@ -32,7 +32,7 @@ Left to right, top to bottom (sizes at zoom 1):
 - **Changes**: changed files with counts; diff lines wrap onto rows marked ↳; commit box.
 - **Vitals** follows the active space's machine:
   - **CPU**: a per-core equalizer and a history strip. Under the big busy % sit user/sys, temperature, power and clock.
-  - **GPUs**: one equalizer per GPU (NVIDIA: GPU, MEM, VRAM, PWR, TEMP, FAN, CLK; Intel engines or clock; Pi V3D queues), each with a history strip and VRAM, power, temperature and clock under the big %.
+  - **GPUs**: one equalizer per GPU (NVIDIA: GPU, VRAM, PWR, TEMP, FAN, CLK; Intel engines or clock; Pi V3D queues), each with a history strip and VRAM, power, temperature and clock under the big %.
   - **Colors**: bars, strips and big numbers go green under 40 %, yellow under 60 %, orange (`#ff9f0a`) under 80 %, then red.
   - **Two columns** when wide: CPU, memory and load, then disks on the left; GPUs and network on the right, in one scroll, with the CPU block stretched to the first GPU block's height.
   - **Units**: RAM, swap and VRAM in binary GB; disks and network in decimal.

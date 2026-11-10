@@ -18,7 +18,7 @@ import (
 // gpuDev is one GPU as read, before rates.
 type gpuDev struct {
 	ID, Kind, Name               string
-	Util, MemUtil, Enc, Dec      *float64
+	Util, Enc, Dec               *float64
 	MemUsed, MemTotal            *float64 // bytes
 	Temp, Fan, Power, PowerLimit *float64
 	Clock, ClockMax              *float64
@@ -113,7 +113,7 @@ func readNvidia() []gpuDev {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "nvidia-smi",
-		"--query-gpu=index,name,utilization.gpu,utilization.memory,utilization.encoder,utilization.decoder,memory.used,memory.total,temperature.gpu,power.draw,power.limit,fan.speed,clocks.sm,clocks.max.sm",
+		"--query-gpu=index,name,utilization.gpu,utilization.encoder,utilization.decoder,memory.used,memory.total,temperature.gpu,power.draw,power.limit,fan.speed,clocks.sm,clocks.max.sm",
 		"--format=csv,noheader,nounits").Output()
 	if err != nil {
 		return nil
@@ -121,15 +121,15 @@ func readNvidia() []gpuDev {
 	var devs []gpuDev
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, ", ")
-		if len(f) < 14 {
+		if len(f) < 13 {
 			continue
 		}
 		devs = append(devs, gpuDev{
 			ID: "nv" + strings.TrimSpace(f[0]), Kind: "nvidia", Name: shortNvidia(f[1]),
-			Util: optF(f[2]), MemUtil: optF(f[3]), Enc: optF(f[4]), Dec: optF(f[5]),
-			MemUsed: scaled(optF(f[6]), 1<<20), MemTotal: scaled(optF(f[7]), 1<<20),
-			Temp: optF(f[8]), Power: optF(f[9]), PowerLimit: optF(f[10]), Fan: optF(f[11]),
-			Clock: optF(f[12]), ClockMax: optF(f[13]),
+			Util: optF(f[2]), Enc: optF(f[3]), Dec: optF(f[4]),
+			MemUsed: scaled(optF(f[5]), 1<<20), MemTotal: scaled(optF(f[6]), 1<<20),
+			Temp: optF(f[7]), Power: optF(f[8]), PowerLimit: optF(f[9]), Fan: optF(f[10]),
+			Clock: optF(f[11]), ClockMax: optF(f[12]),
 		})
 	}
 	return devs
@@ -300,7 +300,7 @@ func gpuViews(cur, prev []gpuDev) []appGPU {
 		switch g.Kind {
 		case "nvidia":
 			v.Util = g.Util
-			v.Bands = []appBand{{"GPU", g.Util}, {"MEM", g.MemUtil},
+			v.Bands = []appBand{{"GPU", g.Util},
 				{"VRAM", pctOf(g.MemUsed, g.MemTotal)}, {"PWR", pctOf(g.Power, g.PowerLimit)},
 				{"TEMP", g.Temp}, {"FAN", g.Fan}, {"CLK", pctOf(g.Clock, g.ClockMax)}}
 		case "amd":
