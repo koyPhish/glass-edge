@@ -9,7 +9,7 @@ import { tones, tint, levelColor, loadColor, bytes, bytesOf, icon, MONO } from "
 
 // The reader comes from this repo's GitHub releases; a local build.sh build wins while it exists.
 const REPO = "koyPhish/glass-edge";
-const VERSION = "0.1.2";
+const VERSION = "0.1.3";
 const BIN = ".local/share/vitals/vitals";
 const DIST = () => `${home()}/.local/share/vitals/dist`;
 const OS = { Linux: "linux", Darwin: "darwin" };

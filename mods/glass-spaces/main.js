@@ -74,6 +74,7 @@ export default class Spaces extends View {
     this.reconnecting = JSON.parse(localStorage.getItem("machines.reconnecting") ?? "{}");
     for (const state of Object.values(this.reconnecting)) state.busy = false;
     this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]"));
+    this.hideUnreachable = localStorage.getItem("machines.hideUnreachable") === "1";
     this.dragMachine = undefined;
     this.editing = undefined;
     this.nameInput = InputState.new({ placeholder: "Machine name" });
@@ -364,7 +365,9 @@ export default class Spaces extends View {
     const loadingRow = m => h_flex().id(`machine-loading-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).items_center().when(collapsed, el => el.justify_center()).text_size(12).text_color(t.dim).child(collapsed ? "…" : "Loading…");
     if (!remote.length) return loading(null) && !rows.length ? [loadingRow(null)] : collapsed ? rows.map(draw)
       : rows.map((r, i) => v_flex().id(`group-row-${i}`).flex_none().mb(6).p(3).rounded(8).bg(t.surface).border_1().border_color(t.border).child(draw(r)));
-    const machineNames = byMachineOrder([null, ...remote]);
+    // Unreachable machines left out while hidden, unless mid-reconnect.
+    const hidden = m => this.hideUnreachable && !this.reconnecting[m] && this.machines.find(k => k.name === m)?.state === "unreachable";
+    const machineNames = byMachineOrder([null, ...remote.filter(m => !hidden(m))]);
     return machineNames.flatMap((m) => {
       const mine = rows.filter((r) => (r.w.machine ?? null) === m);
       const repair = this.reconnecting[m];
@@ -539,8 +542,17 @@ export default class Spaces extends View {
       .child(h_flex().h(31).pl(16).pr(10).items_center().justify_between().text_size(11.5).text_color(t.dim)
         .when(collapsed, el => el.pl(0).pr(0).justify_center())
         .when(!collapsed, el => el.child("Spaces"))
-        .child(div().id("space-new").size(26).flex_none().flex().items_center().justify_center().rounded(6).hover(s => s.bg(t.hover).text_color(t.foreground))
-          .on_click(() => run("space.new")).child(svg("mods/workspace-chrome/plus.svg").size(14))))
+        .child(h_flex().flex_none().gap(2).items_center()
+          .when(!collapsed, el => el.child(div().id("space-unreachable").size(26).flex_none().flex().items_center().justify_center().rounded(6).hover(s => s.bg(t.hover).text_color(t.foreground))
+            .tooltip(this.hideUnreachable ? "Show unreachable machines" : "Hide unreachable machines")
+            .on_click((_e, cx) => {
+              this.hideUnreachable = !this.hideUnreachable;
+              localStorage.setItem("machines.hideUnreachable", this.hideUnreachable ? "1" : "0");
+              cx.notify();
+            })
+            .child(svg(`mods/glass-spaces/${this.hideUnreachable ? "eye-off" : "eye"}.svg`).size(14))))
+          .child(div().id("space-new").size(26).flex_none().flex().items_center().justify_center().rounded(6).hover(s => s.bg(t.hover).text_color(t.foreground))
+            .on_click(() => run("space.new")).child(svg("mods/workspace-chrome/plus.svg").size(14)))))
       .child(v_flex().flex_1().min_h(0).px(collapsed ? 0 : 8).pb(14).overflow_y_scrollbar().mode("always")
         .on_mouse_up("left", (_e, cx) => { this.pressed = null; this.dragMachine = undefined; cx.notify(); })
         .children(this.grouped(t, collapsed))), props()?.frame);
