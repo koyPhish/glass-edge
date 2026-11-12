@@ -62,7 +62,7 @@ export default class Usage extends View {
     cx.timer.every(30000, (cx) => this.refresh(cx));
     // Windows: keep the usage cache fresh from the live API while Herdr is open.
     this.populate(cx);
-    cx.timer.every(600000, (cx) => this.populate(cx));
+    cx.timer.every(300000, (cx) => this.populate(cx));
   }
 
   // Windows only: run the populator, which reads the local Claude token and
