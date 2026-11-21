@@ -102,10 +102,9 @@ export default class Usage extends View {
 
   fit() {
     const n = this.shown(nowSec()).length;
-    const px = !n ? 0 : this.folded ? 38 : 42 + n * 62;
+    const px = !n || this.folded ? 38 : 42 + n * 62;
     const node = find(layout(), "usage");
     if (!node) return;
-    if (!px) { if (!node.hidden) run("layout.hide", { id: "usage" }); return; }
     if (node.hidden) run("layout.show", { id: "usage" });
     if (node.size?.px !== px) run("layout.resize", { id: "usage", px });
   }
@@ -142,7 +141,13 @@ export default class Usage extends View {
     const t = theme();
     const now = nowSec();
     const list = this.shown(now);
-    if (!list.length) return edgeFrame(div().size_full(), props()?.frame);
+    if (!list.length) {
+      return edgeFrame(v_flex().id("root").size_full().min_h(0).p(4).font_family(MONO).text_size(11)
+        .child(h_flex().h(28).px(8).gap(8).items_center().text_color(t.muted)
+          .child(div().flex_none().font_family(SANS).text_size(12).font_semibold().child("Usage"))
+          .child(div().flex_1())
+          .child(div().font_family(SANS).text_color(t.dim).child("no recent data"))), props()?.frame);
+    }
     const open = !this.folded;
     const toggle = (_e, cx) => {
       this.folded = !this.folded;
